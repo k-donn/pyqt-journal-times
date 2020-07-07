@@ -1,6 +1,6 @@
-# Journal Entry Times
+# Journal Entry Times PyQt (WIP)
 
-A visual representation of entries in a Day One journal.
+A PyQt app to represent entries in a Day One journal.
 
 ## Usage
 

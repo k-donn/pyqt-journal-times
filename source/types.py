@@ -82,8 +82,19 @@ class Export(TypedDict):
     entries: List[Entry]
 
 
-# Mapping of tag names to unique colors
-ColorMap = Dict[str, Tuple[float, float, float, float]]
+# RGBA color
+Color = Tuple[float, float, float, float]
 
-# Represents a point's color and x & y values
-PointColorVal = Dict[str, Union[str, float]]
+# Mapping of tag names to unique colors
+ColorMap = Dict[str, Color]
+
+# PointColorVal = Dict[str, Union[str, float]]
+
+
+class Dot(TypedDict):
+    """Represents a point's tag, color, and x & y values."""
+
+    color: Color
+    tag: str
+    x_value: float
+    y_value: float
