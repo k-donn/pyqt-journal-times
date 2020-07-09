@@ -1,23 +1,24 @@
 """
 Display a graph of journal entries from Day One JSON.
 
-usage: run.py [-h] -f FILE [-d]
+usage: python3.8 run.py [-h]
 
 optional arguments:
   -h, --help            show this help message and exit
-  -f FILE, --file FILE  Path to exported Day One JSON file
 """
 
-import argparse
+import sys
+
+from PyQt5.QtWidgets import QApplication
 
 from source import graph
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Display a graph of journal entries from Day One JSON")
-    parser.add_argument("-f", "--file", required=True,
-                        help="Path to exported Day One JSON file")
+    if "-h" in sys.argv or "--help" in sys.argv:
+        print(__doc__)
+        exit(0)
 
-    args = parser.parse_args()
+    app = QApplication(sys.argv)
 
-    graph.App()
+    journal_times = graph.App()
+    exit(app.exec_())

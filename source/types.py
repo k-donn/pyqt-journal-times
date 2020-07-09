@@ -1,6 +1,6 @@
 """Store all of the types associated with Day One entries."""
 
-from typing import TypedDict, List, Dict, Union, Tuple
+from typing import Dict, List, Tuple, TypedDict
 
 
 class WeatherProps(TypedDict):
