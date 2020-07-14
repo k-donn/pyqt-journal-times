@@ -1,13 +1,10 @@
 """Analyze data and show graphs."""
 # TODO
-# Add vertical scroll area to show all figures
 # refactor long-statements and long parameters
 
 import datetime
 from typing import Dict, List, Tuple
 
-import matplotlib.cm as cm
-import matplotlib.colors as colors
 import matplotlib.dates as dates
 import matplotlib.pyplot as plt
 import numpy as np
@@ -23,11 +20,13 @@ from matplotlib.legend import Legend
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MultipleLocator
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import QCoreApplication, pyqtSlot
+from PyQt5.QtCore import QCoreApplication, Qt, pyqtSlot
 from PyQt5.QtGui import QKeySequence
-from PyQt5.QtWidgets import QFileDialog, QMainWindow, QPushButton, QShortcut
+from PyQt5.QtWidgets import (QDesktopWidget, QFileDialog, QMainWindow,
+                             QPushButton, QScrollArea, QShortcut, QVBoxLayout,
+                             QWidget)
 
-from .tools import extract_json, find_tags, str_to_date
+from .tools import calc_color_map, extract_json, find_tags, str_to_date
 from .types import ColorMap, Dict, Dot, Entry, Export, List, Tuple
 
 
@@ -108,29 +107,63 @@ class App(QMainWindow):
         """Create the Plot with the opened file data."""
         self.showMaximized()
 
-        self.dp = DotPlot(parent=self, file=self.file)
+        scroll = QScrollArea()
+        widget = QWidget()
+        layout = QVBoxLayout()
 
-        toolbar = NavigationToolbar(self.dp, self)
+        self.curr_w = QDesktopWidget().screenGeometry().width() - 20
+        self.curr_h = QDesktopWidget().screenGeometry().height()
 
-        layout = QtWidgets.QVBoxLayout()
-        layout.addWidget(toolbar)
+        self.dp = DotPlot(
+            parent=self,
+            file=self.file,
+            width=self.curr_w,
+            height=self.curr_h)
+        self.hg = Histogram(
+            parent=self,
+            file=self.file,
+            width=self.curr_w,
+            height=self.curr_h)
+
+        toolbar_dp = NavigationToolbar(self.dp, self)
+        toolbar_hg = NavigationToolbar(self.hg, self)
+
+        layout.addWidget(toolbar_dp)
         layout.addWidget(self.dp)
+        layout.addWidget(toolbar_hg)
+        layout.addWidget(self.hg)
 
-        # Create a placeholder widget to hold our toolbar and canvas.
-        widget = QtWidgets.QWidget()
+        self.dp.setFixedWidth(self.curr_w)
+        self.hg.setFixedWidth(self.curr_w)
+
+        self.dp.setFixedHeight(self.curr_h)
+        self.hg.setFixedHeight(self.curr_h)
+
         widget.setLayout(layout)
-        self.setCentralWidget(widget)
+
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(widget)
+
+        self.setCentralWidget(scroll)
 
         self.show()
 
 
 class DotPlot(FigureCanvas):
-
-    def __init__(self, parent: App = None, file: str = "") -> None:
+    def __init__(self, parent: App = None, file: str = "",
+                 width: int = 1920, height: int = 1080) -> None:
         """Display a graph of journal entries from Day One JSON."""
         self.file = file
 
-        self.dot_plot = Figure(figsize=(16, 9), dpi=120)
+        self.dpi = 120
+
+        self.dot_plot = Figure(
+            figsize=(
+                width / self.dpi,
+                height / self.dpi),
+            dpi=self.dpi)
         super().__init__(self.dot_plot)
 
         # FigureCanvas.__init__(self, self.dot_plot)
@@ -142,7 +175,7 @@ class DotPlot(FigureCanvas):
 
         self.tags = find_tags(self.entries)
 
-        self.color_map = self.calc_color_map()
+        self.color_map = calc_color_map(self.tags)
 
         self.dots, self.x_0 = self.parse_entries()
 
@@ -202,33 +235,6 @@ class DotPlot(FigureCanvas):
                           "x_value": x_val, "y_value": y_val}
             parsed_entries.append(entry_info)
         return (parsed_entries, x_0)
-
-    def calc_color_map(self) -> ColorMap:
-        """Create a dictionary to map unique tags to unique colors.
-
-        Returns
-        -------
-        `ColorMap`
-            Each tag's respective color
-
-        """
-        color_map: ColorMap = {}
-
-        vmin = 0
-        vmax = len(self.tags)
-
-        norm = colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
-        # Intellisense can't find any of the color-map members part of cm
-        mapper = cm.ScalarMappable(
-            norm=norm, cmap=cm.gist_ncar)  # type: ignore
-
-        # always map none to black, index-map non-none
-        color_map = {tag: mapper.to_rgba(index)  # type: ignore
-                     for index, tag in enumerate(self.tags) if tag != "none"}
-
-        color_map["none"] = (0.0, 0.0, 0.0, 1.0)
-
-        return color_map
 
     def plot_dot_plot(self) -> List[Line2D]:
         """Plot points representing day v. time of day.
@@ -295,7 +301,9 @@ class DotPlot(FigureCanvas):
         self.dot_plot.autofmt_xdate()
 
         self.dot_axes.set_title("Journal entries date and time of day",
-                                fontdict={"fontsize": 18, "family": "Poppins", "fontweight": "bold"}, pad=25)
+                                fontdict={"fontsize": 18, "family": "Poppins"}, pad=25)
+
+        self.dot_plot.tight_layout()
 
     def add_dot_legend(self) -> Legend:
         """Add a legend that shows the mapping from unique tags to unqiue colors.
@@ -320,10 +328,40 @@ class DotPlot(FigureCanvas):
 
 
 class Histogram(FigureCanvas):
-    def __init__(self) -> None:
-        self.histogram = Figure(figsize=(16, 9), dpi=120)
+    def __init__(self, parent: App = None, file: str = "",
+                 width: int = 0, height: int = 0) -> None:
+        self.file = file
+
+        self.dpi = 120
+
+        self.histogram = Figure(
+            figsize=(
+                width / self.dpi,
+                height / self.dpi),
+            dpi=self.dpi)
+        super().__init__(self.histogram)
+
+        self.setParent(parent)
 
         self.hist_axes: Axes = self.histogram.add_subplot(111)  # type: ignore
+
+        self.full_json: Export = extract_json(self.file)
+
+        self.entries = self.full_json["entries"]
+
+        self.tags = find_tags(self.entries)
+
+        self.color_map = calc_color_map(self.tags)
+
+        self.dots, self.x_0 = self.parse_entries()
+
+        # End of day
+        self.bottom = int(self.x_0)
+        self.left = int(self.x_0) - 0.02
+
+        # Start of day
+        self.top = int(self.x_0) + 1
+        self.right = int(self.x_0) + 0.98
 
         self.histogram_data = self.gen_hour_histogram_data()
 
@@ -336,6 +374,42 @@ class Histogram(FigureCanvas):
 
         self.hist_axes.legend()  # type: ignore
 
+    def parse_entries(
+            self) -> Tuple[List[Dot], float]:
+        """Parse the data from the incoming JSON.
+
+        Calculate datetime info, primary tag, and respective color for each entry
+        in the Day One export.
+
+        Returns
+        -------
+        `Tuple[List[Dot], float]`
+            Represents parsed info about entries and earliest date of entry
+
+        """
+        parsed_entries: List[Dot] = []
+
+        earliest_entry: Entry = min(
+            self.entries, key=lambda entry: entry["creationDate"])
+        x_0: float = dates.date2num(  # type: ignore
+            str_to_date(earliest_entry["creationDate"]))
+
+        for entry in self.entries:
+            entry_info: Dot
+            date = str_to_date(entry["creationDate"])
+            x_val = dates.date2num(date.date())
+            y_val = int(x_0) + dates.date2num(date)
+
+            tag: str = ""
+            if "tags" in entry:
+                tag = entry["tags"][0]
+            else:
+                tag = "none"
+            entry_info = {"color": self.color_map[tag], "tag": tag,  # type: ignore
+                          "x_value": x_val, "y_value": y_val}
+            parsed_entries.append(entry_info)
+        return (parsed_entries, x_0)
+
     def gen_hour_histogram_data(self) -> Dict[str, Dict[float, int]]:
         """Extract the frequency of entries throughout the day.
 
@@ -347,8 +421,9 @@ class Histogram(FigureCanvas):
         freq: Dict[str, Dict[float, int]] = {}
         for tag in self.tags:
             tag_freq: Dict[float, int] = {}
-            day = dates.num2date(self.x_0)
+            start_day = dates.num2date(int(self.x_0))
             delta = datetime.timedelta(hours=1)
+
             for i in range(25):
                 tag_freq[i] = 0
             for dot in self.dots:
@@ -357,7 +432,7 @@ class Histogram(FigureCanvas):
                     tag_freq[date_obj.hour] += 1
             res: Dict[float, int] = {}
             for hour, length in tag_freq.items():
-                time_of_day = dates.date2num(day + (delta * hour))
+                time_of_day = dates.date2num(start_day + (delta * hour))
                 res[time_of_day] = length  # type: ignore
             freq[tag] = res
 
@@ -426,3 +501,5 @@ class Histogram(FigureCanvas):
 
         self.hist_axes.set_title("Frequency of entries throughout the day",
                                  fontdict={"fontsize": 18, "family": "Poppins"}, pad=25)
+
+        self.histogram.tight_layout()

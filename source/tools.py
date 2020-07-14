@@ -3,10 +3,40 @@
 import json
 from datetime import datetime
 
+import matplotlib.cm as cm
+import matplotlib.colors as colors
 import pytz
 import tzlocal
 
-from .types import Entry, Export, List
+from .types import ColorMap, Entry, Export, List
+
+
+def calc_color_map(tags: List[str]) -> ColorMap:
+    """Create a dictionary to map unique tags to unique colors.
+
+    Returns
+    -------
+    `ColorMap`
+        Each tag's respective color
+
+    """
+    color_map: ColorMap = {}
+
+    vmin = 0
+    vmax = len(tags)
+
+    norm = colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
+    # Intellisense can't find any of the color-map members part of cm
+    mapper = cm.ScalarMappable(
+        norm=norm, cmap=cm.gist_ncar)  # type: ignore
+
+    # always map none to black, index-map non-none
+    color_map = {tag: mapper.to_rgba(index)  # type: ignore
+                 for index, tag in enumerate(tags) if tag != "none"}
+
+    color_map["none"] = (0.0, 0.0, 0.0, 1.0)
+
+    return color_map
 
 
 def find_tags(entries: List[Entry]) -> List[str]:

@@ -4,7 +4,7 @@ Generate dummy data to see how graphing works.
 usage: python3.8 data/gen_dummy.py
 """
 # TODO
-# add output file options
+# add output file option
 
 import json
 import sys
@@ -15,7 +15,7 @@ from random import choice, randint
 def generate_entries():
     """Generate tags and dates for entries."""
     res = []
-    curr_day = datetime.now()
+    curr_time = datetime.now()
 
     words = [
         "telefragged",
@@ -31,15 +31,15 @@ def generate_entries():
 
     for _i in range(100):
         # generate between five to ten entries every day
-        curr_day -= timedelta(days=1)
+        curr_time -= timedelta(days=1)
         for _j in range(randint(5, 10)):
             entry = {}
 
-            entry["creationDate"] = curr_day.strftime("%Y-%m-%dT%H:%M:%SZ")
+            entry["creationDate"] = curr_time.strftime("%Y-%m-%dT%H:%M:%SZ")
             # five-ish to ten-ish hours between entries each day
-            curr_day -= timedelta(hours=randint(5, 10),
-                                  minutes=randint(0, 60),
-                                  seconds=randint(0, 60))
+            curr_time -= timedelta(hours=randint(5, 10),
+                                   minutes=randint(0, 60),
+                                   seconds=randint(0, 60))
             entry["tags"] = [choice(words)]
             res.append(entry)
     return res
