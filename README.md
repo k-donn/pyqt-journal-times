@@ -1,18 +1,16 @@
-# Journal Entry Times PyQt (WIP)
+# Journal Entry Times PyQt
 
 A PyQt app to represent entries in a Day One journal.
 
 ## Usage
 
 ```bash
-usage: run.py [-h] -f FILE [-d]
+usage: run.py [-h]
 
 Display a graph of journal entries from Day One JSON
 
 optional arguments:
   -h, --help            show this help message and exit
-  -f FILE, --file FILE  Path to exported Day One JSON file
-  -d, --debug           Show the plots instead of writing to file
 ```
 
 ## Running
@@ -24,7 +22,7 @@ To run from the root dir,
 -   From the root of the folder,
 
 ```bash
-python3.8 run.py --file ./data/<JOURNAL>.json
+python3.8 run.py
 ```
 
 ## Generate Dummy Data
@@ -35,7 +33,7 @@ python3.8 run.py --file ./data/<JOURNAL>.json
 python3.8 ./data/gen_dummy.py
 ```
 
--   Now, just pass in the new ./data/Dummy.json file into `run.py`
+-   Now, select the new `./data/Dummy.json` file from `run.py`
 
 ## Exporting Journal JSON
 
