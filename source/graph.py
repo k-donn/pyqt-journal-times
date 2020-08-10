@@ -1,7 +1,6 @@
 """Analyze data and show graphs."""
 # TODO
-# refactor long-statements and long parameters
-
+# add application and window icon
 import datetime
 from typing import Dict, List, Tuple
 
@@ -27,7 +26,7 @@ from PyQt5.QtWidgets import (QDesktopWidget, QFileDialog, QMainWindow,
                              QWidget)
 
 from .tools import calc_color_map, extract_json, find_tags, str_to_date
-from .types import ColorMap, Dict, Dot, Entry, Export, List, Tuple
+from .types import Dot, Entry, Export
 
 
 class App(QMainWindow):
@@ -38,9 +37,10 @@ class App(QMainWindow):
     Methods
     -------
     ```python
-    initUI(self) -> None:
+    init_ui(self) -> None:
     on_click(self) -> None:
-    on_ctrlq(self) -> None:
+    on_quit_key(self) -> None:
+    plot_graphs(self) -> None:
     ```
 
     Properties
@@ -51,7 +51,9 @@ class App(QMainWindow):
     init_h: int
     btn_w: int
     btn_h: int
-    m: Plot
+    dp: DotPlot
+    self.shortcut_q: QShortcut
+    self.shortcut_w: QShortcut
     ```
     """
 
@@ -67,10 +69,10 @@ class App(QMainWindow):
 
         self.dp: DotPlot
 
-        self.initUI()
+        self.init_ui()
 
-    def initUI(self) -> None:
-        """Create the initial window with button to open file and register event handlers."""
+    def init_ui(self) -> None:
+        """Create the initial window and register event handlers."""
         self.setWindowTitle(self.title)
         self.setGeometry(0, 0, self.init_w, self.init_h)
 
@@ -93,7 +95,8 @@ class App(QMainWindow):
         """Create the file dialog and pass the name to plot_graphs."""
         options = QFileDialog.DontUseNativeDialog
         fname, _ = QFileDialog.getOpenFileName(
-            self, "Select File to Analyze", "", "JSON Files (*.json)", "", options)
+            parent=self, caption="Select File to Analyze", directory="",
+            filter="JSON Files (*.json)", initialFilter="", options=options)
         if fname:
             self.file = fname
             self.plot_graphs()
@@ -152,6 +155,40 @@ class App(QMainWindow):
 
 
 class DotPlot(FigureCanvas):
+    """Represent the time of day versus date of entries.
+
+    Methods
+    -------
+    ```python
+    add_dot_legend(self) -> Legend:
+    format_dot_plt(self) -> None:
+    format_dot_x_axis(self) -> None:
+    format_dot_y_axis(self) -> None:
+    format_plt(self) -> None:
+    parse_entries(self) -> None:
+    plot_dot_plor(self) -> None:
+    setup_plt(self) -> None:
+    ```
+
+    Attributes
+    ----------
+    ```python
+    file: str
+    dpi: int
+    dot_plot: Figure
+    full_json: Export
+    tags: List[str]
+    color_map: ColorMap
+    dots: List[Dot]
+    x_0: float
+    bottom: float
+    left: float
+    top: float
+    right: float
+    dot_axes: Axes
+    ```
+    """
+
     def __init__(self, parent: App = None, file: str = "",
                  width: int = 1920, height: int = 1080) -> None:
         """Display a graph of journal entries from Day One JSON."""
@@ -166,10 +203,9 @@ class DotPlot(FigureCanvas):
             dpi=self.dpi)
         super().__init__(self.dot_plot)
 
-        # FigureCanvas.__init__(self, self.dot_plot)
         self.setParent(parent)
 
-        self.full_json: Export = extract_json(self.file)
+        self.full_json = extract_json(self.file)
 
         self.entries = self.full_json["entries"]
 
@@ -187,25 +223,22 @@ class DotPlot(FigureCanvas):
         self.top = int(self.x_0) + 1
         self.right = int(self.x_0) + 0.98
 
-        self.format_plt()
+        self.setup_plt()
 
-        self.dot_axes: Axes = self.dot_plot.add_subplot(111)  # type: ignore
+        self.dot_axes: Axes = self.dot_plot.add_subplot(111)
 
         self.plot_dot_plot()
 
-        self.format_dot_x_axis()
-        self.format_dot_y_axis()
+        self.format_dot_plot()
 
-        self.add_dot_legend()
-
-        self.format_dot()
+        self.format_plt()
 
     def parse_entries(
             self) -> Tuple[List[Dot], float]:
         """Parse the data from the incoming JSON.
 
-        Calculate datetime info, primary tag, and respective color for each entry
-        in the Day One export.
+        Calculate datetime info, primary tag, and respective color
+        for each entry in the Day One export.
 
         Returns
         -------
@@ -217,7 +250,7 @@ class DotPlot(FigureCanvas):
 
         earliest_entry: Entry = min(
             self.entries, key=lambda entry: entry["creationDate"])
-        x_0: float = dates.date2num(  # type: ignore
+        x_0: float = dates.date2num(
             str_to_date(earliest_entry["creationDate"]))
 
         for entry in self.entries:
@@ -231,7 +264,7 @@ class DotPlot(FigureCanvas):
                 tag = entry["tags"][0]
             else:
                 tag = "none"
-            entry_info = {"color": self.color_map[tag], "tag": tag,  # type: ignore
+            entry_info = {"color": self.color_map[tag], "tag": tag,
                           "x_value": x_val, "y_value": y_val}
             parsed_entries.append(entry_info)
         return (parsed_entries, x_0)
@@ -253,13 +286,21 @@ class DotPlot(FigureCanvas):
 
         return lines
 
+    def format_dot_plot(self):
+        """Format the Axes of the figure."""
+        self.format_dot_x_axis()
+        self.format_dot_y_axis()
+
+        self.add_dot_legend()
+
     def format_dot_x_axis(self) -> None:
-        """Draw the ticks, format the labels, and adjust sizing for the day-axis."""
+        """Format x-axis Axes props after rendering."""
         self.dot_axes.xaxis_date()
-        # Pad the x on the left five in the past and pad the right five in the
-        # future
+        # Pad the x on the left five in the past
+        # and pad the right five in the future
         self.dot_axes.set_xlim(left=(self.x_0 - 5),
-                               right=(dates.date2num(datetime.datetime.now().date()) + 5))
+                               right=(dates.date2num(
+                                   datetime.datetime.now().date()) + 5))
 
         x_loc = DayLocator(interval=10)
         x_formatter = DateFormatter("%m/%d/%y")
@@ -272,7 +313,7 @@ class DotPlot(FigureCanvas):
         self.dot_axes.set_xlabel("Date", fontdict={"fontsize": 15})
 
     def format_dot_y_axis(self) -> None:
-        """Draw the ticks, format the labels, and adjust sizing for the day-axis."""
+        """Format x-axis Axes props after rendering."""
         self.dot_axes.yaxis_date()
         self.dot_axes.set_ylim(bottom=self.bottom, top=self.top)
         self.dot_axes.grid(which="major", axis="y", lw=1)
@@ -290,20 +331,11 @@ class DotPlot(FigureCanvas):
 
         y_axis.set_minor_locator(y_min_loc)
 
-        # Display morning on top and midnight on bottom. This is different than what
-        # we did at assigning `y_vals`
+        # Display morning on top and midnight on bottom.
+        # This is different than what we did at assigning `y_vals`
         self.dot_axes.invert_yaxis()
 
         self.dot_axes.set_ylabel("Time of day", fontdict={"fontsize": 15})
-
-    def format_dot(self) -> None:
-        """Format dot plot after it had been rendered."""
-        self.dot_plot.autofmt_xdate()
-
-        self.dot_axes.set_title("Journal entries date and time of day",
-                                fontdict={"fontsize": 18, "family": "Poppins"}, pad=25)
-
-        self.dot_plot.tight_layout()
 
     def add_dot_legend(self) -> Legend:
         """Add a legend that shows the mapping from unique tags to unqiue colors.
@@ -317,17 +349,56 @@ class DotPlot(FigureCanvas):
         tags = list(self.color_map.keys())
 
         lines = [Line2D([], [], color=color, label=tag,
-                        marker="o", linestyle="none") for tag, color in self.color_map.items()]
+                        marker="o", linestyle="none")
+                 for tag, color in self.color_map.items()]
 
         return self.dot_axes.legend(
             lines, tags, loc=7, bbox_to_anchor=(1.12, 0.5))
 
     def format_plt(self) -> None:
-        """Set all top-level attributes of the plot."""
+        """Format the plot after it has been rendered."""
+        self.dot_plot.autofmt_xdate()
+
+        self.dot_axes.set_title("Journal entries date and time of day",
+                                fontdict={"fontsize": 18, "family": "Poppins"},
+                                pad=25)
+
+        self.dot_plot.tight_layout()
+
+    def setup_plt(self) -> None:
+        """Format the plot before rendering."""
         plt.style.use("ggplot")
 
 
 class Histogram(FigureCanvas):
+    """Create a histogram of the frequency of entry tags.
+
+    Methods
+    -------
+    format_hist(self) -> None:
+    format_hist_x_axis(self) -> None:
+    format_hist_y_axis(self) -> None:
+    format_plt(self) -> None:
+    gen_hour_histogram_data(self) -> None:
+    parse_entries(self) -> None:
+    plot_histogram(self) -> None:
+
+    Attributes
+    ----------
+    file: str
+    dpi: int
+    histogram: Figure
+    hist_axes: Axes
+    full_json: Export
+    tags: List[str]
+    color_map: ColorMap
+    dots: List[Dot]
+    bottom: float
+    left: float
+    top: float
+    right: float
+    """
+
     def __init__(self, parent: App = None, file: str = "",
                  width: int = 0, height: int = 0) -> None:
         self.file = file
@@ -343,7 +414,7 @@ class Histogram(FigureCanvas):
 
         self.setParent(parent)
 
-        self.hist_axes: Axes = self.histogram.add_subplot(111)  # type: ignore
+        self.hist_axes: Axes = self.histogram.add_subplot(111)
 
         self.full_json: Export = extract_json(self.file)
 
@@ -367,19 +438,18 @@ class Histogram(FigureCanvas):
 
         self.plot_histogram()
 
-        self.format_hist_x_axis()
-        self.format_hist_y_axis()
-
         self.format_hist()
 
-        self.hist_axes.legend()  # type: ignore
+        self.format_plt()
+
+        self.hist_axes.legend()
 
     def parse_entries(
             self) -> Tuple[List[Dot], float]:
         """Parse the data from the incoming JSON.
 
-        Calculate datetime info, primary tag, and respective color for each entry
-        in the Day One export.
+        Calculate datetime info, primary tag, and respective color
+         for each entry in the Day One export.
 
         Returns
         -------
@@ -391,7 +461,7 @@ class Histogram(FigureCanvas):
 
         earliest_entry: Entry = min(
             self.entries, key=lambda entry: entry["creationDate"])
-        x_0: float = dates.date2num(  # type: ignore
+        x_0: float = dates.date2num(
             str_to_date(earliest_entry["creationDate"]))
 
         for entry in self.entries:
@@ -405,7 +475,7 @@ class Histogram(FigureCanvas):
                 tag = entry["tags"][0]
             else:
                 tag = "none"
-            entry_info = {"color": self.color_map[tag], "tag": tag,  # type: ignore
+            entry_info = {"color": self.color_map[tag], "tag": tag,
                           "x_value": x_val, "y_value": y_val}
             parsed_entries.append(entry_info)
         return (parsed_entries, x_0)
@@ -433,7 +503,7 @@ class Histogram(FigureCanvas):
             res: Dict[float, int] = {}
             for hour, length in tag_freq.items():
                 time_of_day = dates.date2num(start_day + (delta * hour))
-                res[time_of_day] = length  # type: ignore
+                res[time_of_day] = length
             freq[tag] = res
 
         return freq
@@ -445,7 +515,6 @@ class Histogram(FigureCanvas):
         -------
         `BarContainer`
             Object containing all of the plotted bars
-
         """
         bars: List[BarContainer] = []
         total_height = None
@@ -454,10 +523,12 @@ class Histogram(FigureCanvas):
             values = list(tag_freq.values())
             if len(bars) > 0:
                 tag_bars = self.hist_axes.bar(
-                    keys, values, width=0.025, label=tag, color=self.color_map[tag], bottom=total_height)
+                    keys, values, width=0.025, label=tag,
+                    color=self.color_map[tag], bottom=total_height)
             else:
                 tag_bars = self.hist_axes.bar(
-                    keys, values, width=0.025, label=tag, color=self.color_map[tag])
+                    keys, values, width=0.025, label=tag,
+                    color=self.color_map[tag])
                 total_height = np.zeros(len(tag_freq.values()))
 
             total_height += np.array(list(tag_freq.values()))
@@ -465,6 +536,11 @@ class Histogram(FigureCanvas):
         self.hist_axes.xaxis_date()
 
         return bars
+
+    def format_hist(self):
+        """Format the Axes after rendering."""
+        self.format_hist_x_axis()
+        self.format_hist_y_axis()
 
     def format_hist_x_axis(self) -> None:
         """Format the x-axis of the entry hour frequency histogram."""
@@ -495,11 +571,13 @@ class Histogram(FigureCanvas):
 
         self.hist_axes.set_ylabel("Number of entries")
 
-    def format_hist(self) -> None:
-        """Format graph-wide properties of the hour frequency histogram."""
+    def format_plt(self) -> None:
+        """Format the plot after rendering."""
         self.histogram.autofmt_xdate()
 
         self.hist_axes.set_title("Frequency of entries throughout the day",
-                                 fontdict={"fontsize": 18, "family": "Poppins"}, pad=25)
+                                 fontdict={
+                                     "fontsize": 18, "family": "Poppins"},
+                                 pad=25)
 
         self.histogram.tight_layout()

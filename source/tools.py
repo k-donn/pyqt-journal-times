@@ -54,8 +54,8 @@ def find_tags(entries: List[Entry]) -> List[str]:
 
     Notes
     -----
-    The returned list is sorted in order to get the same mapping every single time given
-    the same exported JSON
+    The returned list is sorted in order to get the same mapping
+    every single time given the same exported JSON
 
     """
     avail_tags: List[str] = []
@@ -74,9 +74,9 @@ def str_to_date(date_str: str) -> datetime:
 
     Matplotlib isn't compatible with timezone aware datetime objects.
     If one is passed to date2num, it undergoes unpredicted behaviour.
-    This calculates the offset (offset from UTC changes based on a lot of things)
-    then applies that offset via a timedelta object that doesn't affect/apply
-    timezone info.
+    This calculates the offset then applies that offset via
+    a timedelta object that doesn't affect/apply timezone info.
+    (offset from UTC changes based on a lot of things)
 
     Parameters
     ----------
@@ -97,7 +97,9 @@ def str_to_date(date_str: str) -> datetime:
     local_time_auto = utc_time.replace(tzinfo=pytz.utc)
     local_time_auto = utc_time.astimezone(local_timezone)
 
-    local_time = utc_time + local_time_auto.utcoffset()
+    difference = local_time_auto.utcoffset()
+    if difference is not None:
+        local_time = utc_time + difference
     return local_time
 
 
