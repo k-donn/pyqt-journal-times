@@ -18,9 +18,8 @@ from matplotlib.figure import Figure
 from matplotlib.legend import Legend
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MultipleLocator
-from PyQt5 import QtWidgets
 from PyQt5.QtCore import QCoreApplication, Qt, pyqtSlot
-from PyQt5.QtGui import QKeySequence
+from PyQt5.QtGui import QKeySequence, QIcon
 from PyQt5.QtWidgets import (QDesktopWidget, QFileDialog, QMainWindow,
                              QPushButton, QScrollArea, QShortcut, QVBoxLayout,
                              QWidget)
@@ -74,6 +73,7 @@ class App(QMainWindow):
     def init_ui(self) -> None:
         """Create the initial window and register event handlers."""
         self.setWindowTitle(self.title)
+        self.setWindowIcon(QIcon("icons/combined.png"))
         self.setGeometry(0, 0, self.init_w, self.init_h)
 
         button = QPushButton("Select Data", self)
