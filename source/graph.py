@@ -1,6 +1,6 @@
 """Analyze data and show graphs."""
 # TODO
-# add application and window icon
+# Add open file menu option
 import datetime
 from typing import Dict, List, Tuple
 
@@ -18,12 +18,10 @@ from matplotlib.figure import Figure
 from matplotlib.legend import Legend
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MultipleLocator
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import QCoreApplication, Qt, pyqtSlot
+from PyQt5.QtCore import QCoreApplication, pyqtSlot
 from PyQt5.QtGui import QKeySequence
-from PyQt5.QtWidgets import (QDesktopWidget, QFileDialog, QMainWindow,
-                             QPushButton, QScrollArea, QShortcut, QVBoxLayout,
-                             QWidget)
+from PyQt5.QtWidgets import (QFileDialog, QMainWindow, QPushButton, QShortcut,
+                             QTabWidget, QVBoxLayout, QWidget)
 
 from .tools import calc_color_map, extract_json, find_tags, str_to_date
 from .types import Dot, Entry, Export
@@ -59,6 +57,7 @@ class App(QMainWindow):
 
     def __init__(self):
         super().__init__()
+
         self.title = "Journal Entries"
 
         self.init_w = 500
@@ -66,8 +65,6 @@ class App(QMainWindow):
 
         self.btn_w = 150
         self.btn_h = 75
-
-        self.dp: DotPlot
 
         self.init_ui()
 
@@ -94,6 +91,7 @@ class App(QMainWindow):
     def on_click(self) -> None:
         """Create the file dialog and pass the name to plot_graphs."""
         options = QFileDialog.DontUseNativeDialog
+
         fname, _ = QFileDialog.getOpenFileName(
             parent=self, caption="Select File to Analyze", directory="",
             filter="JSON Files (*.json)", initialFilter="", options=options)
@@ -110,48 +108,61 @@ class App(QMainWindow):
         """Create the Plot with the opened file data."""
         self.showMaximized()
 
-        scroll = QScrollArea()
-        widget = QWidget()
-        layout = QVBoxLayout()
+        plot_tabs = PlotTabs(self, self.file)
 
-        self.curr_w = QDesktopWidget().screenGeometry().width() - 20
-        self.curr_h = QDesktopWidget().screenGeometry().height()
-
-        self.dp = DotPlot(
-            parent=self,
-            file=self.file,
-            width=self.curr_w,
-            height=self.curr_h)
-        self.hg = Histogram(
-            parent=self,
-            file=self.file,
-            width=self.curr_w,
-            height=self.curr_h)
-
-        toolbar_dp = NavigationToolbar(self.dp, self)
-        toolbar_hg = NavigationToolbar(self.hg, self)
-
-        layout.addWidget(toolbar_dp)
-        layout.addWidget(self.dp)
-        layout.addWidget(toolbar_hg)
-        layout.addWidget(self.hg)
-
-        self.dp.setFixedWidth(self.curr_w)
-        self.hg.setFixedWidth(self.curr_w)
-
-        self.dp.setFixedHeight(self.curr_h)
-        self.hg.setFixedHeight(self.curr_h)
-
-        widget.setLayout(layout)
-
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(widget)
-
-        self.setCentralWidget(scroll)
+        self.setCentralWidget(plot_tabs)
 
         self.show()
+
+
+class PlotTabs(QWidget):
+    """Manage the tabs that contain all plots.
+
+    Attributes
+    ----------
+    file: str
+    """
+
+    def __init__(self, parent: App, file: str):
+        super().__init__(parent=parent)
+
+        self.file = file
+
+        glob_layout = QVBoxLayout()
+
+        tabs = QTabWidget()
+        dp_tab = QWidget()
+        hg_tab = QWidget()
+
+        tabs.addTab(dp_tab, "Dot Plot")
+        tabs.addTab(hg_tab, "Histogram")
+
+        # Dot Plot tab
+        dp_layout = QVBoxLayout()
+
+        dp = DotPlot(parent=self, file=self.file)
+
+        dp_toolbar = NavigationToolbar(dp, self)
+
+        dp_layout.addWidget(dp)
+        dp_layout.addWidget(dp_toolbar)
+        dp_tab.setLayout(dp_layout)
+
+        # Histogram Plot tab
+        hg_layout = QVBoxLayout()
+
+        hg = Histogram(parent=self, file=self.file)
+
+        hg_toolbar = NavigationToolbar(hg, self)
+
+        hg_layout.addWidget(hg)
+        hg_layout.addWidget(hg_toolbar)
+        hg_tab.setLayout(hg_layout)
+
+        # Add to current widget
+        glob_layout.addWidget(tabs)
+
+        self.setLayout(glob_layout)
 
 
 class DotPlot(FigureCanvas):
@@ -189,18 +200,12 @@ class DotPlot(FigureCanvas):
     ```
     """
 
-    def __init__(self, parent: App = None, file: str = "",
-                 width: int = 1920, height: int = 1080) -> None:
+    def __init__(self, parent: QWidget, file: str) -> None:
         """Display a graph of journal entries from Day One JSON."""
         self.file = file
 
-        self.dpi = 120
+        self.dot_plot = Figure(figsize=(16, 9), dpi=120)
 
-        self.dot_plot = Figure(
-            figsize=(
-                width / self.dpi,
-                height / self.dpi),
-            dpi=self.dpi)
         super().__init__(self.dot_plot)
 
         self.setParent(parent)
@@ -361,7 +366,7 @@ class DotPlot(FigureCanvas):
 
         self.dot_axes.set_title("Journal entries date and time of day",
                                 fontdict={"fontsize": 18, "family": "Poppins"},
-                                pad=25)
+                                pad=1)
 
         self.dot_plot.tight_layout()
 
@@ -399,17 +404,11 @@ class Histogram(FigureCanvas):
     right: float
     """
 
-    def __init__(self, parent: App = None, file: str = "",
-                 width: int = 0, height: int = 0) -> None:
+    def __init__(self, parent: QWidget, file: str) -> None:
         self.file = file
 
-        self.dpi = 120
+        self.histogram = Figure(figsize=(16, 9), dpi=120)
 
-        self.histogram = Figure(
-            figsize=(
-                width / self.dpi,
-                height / self.dpi),
-            dpi=self.dpi)
         super().__init__(self.histogram)
 
         self.setParent(parent)
@@ -578,6 +577,6 @@ class Histogram(FigureCanvas):
         self.hist_axes.set_title("Frequency of entries throughout the day",
                                  fontdict={
                                      "fontsize": 18, "family": "Poppins"},
-                                 pad=25)
+                                 pad=1)
 
         self.histogram.tight_layout()
