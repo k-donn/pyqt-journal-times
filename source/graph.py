@@ -19,9 +19,9 @@ from matplotlib.legend import Legend
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MultipleLocator
 from PyQt5.QtCore import QCoreApplication, pyqtSlot
-from PyQt5.QtGui import QKeySequence
-from PyQt5.QtWidgets import (QFileDialog, QMainWindow, QPushButton, QShortcut,
-                             QTabWidget, QVBoxLayout, QWidget)
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import (QFileDialog, QMainWindow, QPushButton,
+                             QTabWidget, QVBoxLayout, QWidget, QAction)
 
 from .tools import calc_color_map, extract_json, find_tags, str_to_date
 from .types import Dot, Entry, Export
@@ -36,7 +36,7 @@ class App(QMainWindow):
     -------
     ```python
     init_ui(self) -> None:
-    on_click(self) -> None:
+    open_dialog(self) -> None:
     on_quit_key(self) -> None:
     plot_graphs(self) -> None:
     ```
@@ -49,9 +49,8 @@ class App(QMainWindow):
     init_h: int
     btn_w: int
     btn_h: int
-    dp: DotPlot
-    self.shortcut_q: QShortcut
-    self.shortcut_w: QShortcut
+    plot_tabs: PlotTabs
+    file_menu: QMenu
     ```
     """
 
@@ -66,6 +65,10 @@ class App(QMainWindow):
         self.btn_w = 150
         self.btn_h = 75
 
+        self.file_menu = self.menuBar().addMenu("&File")
+
+        self.plot_tabs: PlotTabs = None
+
         self.init_ui()
 
     def init_ui(self) -> None:
@@ -73,22 +76,28 @@ class App(QMainWindow):
         self.setWindowTitle(self.title)
         self.setGeometry(0, 0, self.init_w, self.init_h)
 
-        button = QPushButton("Select Data", self)
-        button.move(int(self.init_w / 2) - int(self.btn_w / 2),
-                    int(self.init_h / 2) - int(self.btn_h / 2))
-        button.resize(self.btn_w, self.btn_h)
-        button.clicked.connect(self.on_click)
+        select_btn = QPushButton("Select Data", self)
+        select_btn.move(int(self.init_w / 2) - int(self.btn_w / 2),
+                        int(self.init_h / 2) - int(self.btn_h / 2))
+        select_btn.resize(self.btn_w, self.btn_h)
+        select_btn.clicked.connect(self.open_dialog)
 
-        self.shortcut_q = QShortcut(QKeySequence("Ctrl+Q"), self)
-        self.shortcut_w = QShortcut(QKeySequence("Ctrl+W"), self)
+        open_file = QAction(QIcon.fromTheme("fileopen"), "&Open", self)
+        open_file.setShortcut("Ctrl+O")
+        open_file.setStatusTip("Open Day One JSON file")
+        open_file.triggered.connect(self.open_dialog)
+        self.file_menu.addAction(open_file)
 
-        self.shortcut_q.activated.connect(self.on_quit_key)
-        self.shortcut_w.activated.connect(self.on_quit_key)
+        quit_app = QAction(QIcon.fromTheme("exit"), "&Quit", self)
+        quit_app.setShortcuts(["Ctrl+Q", "Ctrl+W"])
+        quit_app.setStatusTip("Quit Application")
+        quit_app.triggered.connect(self.on_quit_key)
+        self.file_menu.addAction(quit_app)
 
         self.show()
 
     @pyqtSlot()
-    def on_click(self) -> None:
+    def open_dialog(self) -> None:
         """Create the file dialog and pass the name to plot_graphs."""
         options = QFileDialog.DontUseNativeDialog
 
@@ -97,6 +106,7 @@ class App(QMainWindow):
             filter="JSON Files (*.json)", initialFilter="", options=options)
         if fname:
             self.file = fname
+
             self.plot_graphs()
 
     @pyqtSlot()
@@ -108,9 +118,14 @@ class App(QMainWindow):
         """Create the Plot with the opened file data."""
         self.showMaximized()
 
-        plot_tabs = PlotTabs(self, self.file)
+        if self.plot_tabs is not None:
+            self.centralWidget().deleteLater()
 
-        self.setCentralWidget(plot_tabs)
+            self.plot_tabs = PlotTabs(self, self.file)
+        else:
+            self.plot_tabs = PlotTabs(self, self.file)
+
+        self.setCentralWidget(self.plot_tabs)
 
         self.show()
 
