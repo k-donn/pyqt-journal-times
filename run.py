@@ -16,9 +16,10 @@ from source import graph
 if __name__ == "__main__":
     if "-h" in sys.argv or "--help" in sys.argv:
         print(__doc__)
-        exit(0)
+        sys.exit(0)
 
     app = QApplication(sys.argv)
 
     journal_times = graph.App()
-    exit(app.exec_())
+
+    sys.exit(app.exec_())
