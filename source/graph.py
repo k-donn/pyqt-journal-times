@@ -1,6 +1,6 @@
 """Analyze data and show graphs."""
 # TODO
-# Add open file menu option
+#
 import datetime
 from typing import Dict, List, Tuple
 
@@ -57,8 +57,6 @@ class App(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.title = "Journal Entries"
-
         self.init_w = 500
         self.init_h = 400
 
@@ -73,7 +71,7 @@ class App(QMainWindow):
 
     def init_ui(self) -> None:
         """Create the initial window and register event handlers."""
-        self.setWindowTitle(self.title)
+        self.setWindowTitle("Journal Entries")
         self.setGeometry(0, 0, self.init_w, self.init_h)
 
         select_btn = QPushButton("Select Data", self)
@@ -119,6 +117,7 @@ class App(QMainWindow):
         self.showMaximized()
 
         if self.plot_tabs is not None:
+            # If the user file->open while a plot is loaded
             self.centralWidget().deleteLater()
 
             self.plot_tabs = PlotTabs(self, self.file)
