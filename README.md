@@ -44,3 +44,8 @@ Export as JSON and place file in ./data directory.
 ## Meta
 
 I got the inspiration from seeing [jiuguangw](https://github.com/jiuguangw/)'s [Agenoria](https://github.com/jiuguangw/Agenoria)
+
+## TODO
+
+-   [ ] Create super class that Dot Plot and Histogram inhereit
+-   [ ] Add data summary tab
