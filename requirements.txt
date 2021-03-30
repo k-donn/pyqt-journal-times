@@ -31,7 +31,7 @@ pycodestyle==2.6.0
 pycparser==2.20
 pydocstyle==4.0.1
 pyflakes==2.2.0
-pygments==2.6.1
+pygments==2.7.4
 pylint==2.5.2
 pyopenssl==19.1.0
 pyparsing==2.4.7
