@@ -23,7 +23,7 @@ matplotlib==3.1.3
 mccabe==0.6.1
 mypy==0.782
 mypy_extensions==0.4.3
-numpy==1.19.1
+numpy==1.22.0
 pathtools==0.1.2
 pip==20.0.2
 psutil==5.7.2
