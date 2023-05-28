@@ -17,9 +17,6 @@ optional arguments:
 
 To run from the root dir,
 
--   Create conda env from `environment.yml` (see [Install Conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html))
--   Copy journal [JSON Export](#exporting-journal-json) into `./data` or [create dummy data](#generate-dummy-data)
--   From the root of the folder,
 
 ```bash
 python3.8 run.py
